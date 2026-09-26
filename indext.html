@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amigo Secreto - Visualizador y Sorteo</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Font: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            darkBg: '#0b0f19',
+            darkCard: '#151c2c',
+            darkBorder: '#232d42',
+            neonViolet: '#8b5cf6',
+            neonCyan: '#06b6d4',
+            neonEmerald: '#10b981',
+            neonRose: '#f43f5e',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Animación de giro 3D intenso de balotas */
+    .lottery-ball-card {
+      perspective: 1200px;
+      animation: superSpinEnter 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    @keyframes superSpinEnter {
+      0% {
+        opacity: 0;
+        /* GIRO INTENSO: 3 a 4 vueltas completas en X, Y y Z */
+        transform: translate(var(--tx), var(--ty)) scale(0.05) rotate(1440deg) rotateX(1080deg) rotateY(720deg);
+        filter: blur(12px);
+      }
+      70% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1.12) rotate(-20deg) rotateX(15deg);
+        filter: blur(0px);
+      }
+      85% {
+        transform: scale(0.95) rotate(10deg);
+      }
+      100% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1) rotate(0deg) rotateX(0deg) rotateY(0deg);
+      }
+    }
+
+    /* Animación continua del bombo de balotas */
+    @keyframes tumble {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    .animate-tumble {
+      animation: tumble 1.2s infinite ease-in-out;
+    }
+
+    /* Scrollbar personalizada */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #232d42;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b82f6;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-darkBg text-slate-100 antialiased selection:bg-purple-500 selection:text-white">
+
+  <!-- ENCABEZADO Y NAVEGACIÓN -->
+  <header class="sticky top-0 z-50 bg-darkBg/80 backdrop-blur-md border-b border-darkBorder shadow-2xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row items-center justify-between py-4 gap-4">
+        
+        <!-- Título -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-500 to-cyan-400 p-0.5 shadow-lg shadow-purple-500/20">
+            <div class="w-full h-full bg-darkBg rounded-[10px] flex items-center justify-center">
+              <span class="text-xl">🎁</span>
+            </div>
+          </div>
+          <div>
+            <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent">
+              Amigo Secreto
+            </h1>
+            <p class="text-xs text-slate-400 font-medium">Visualizador de regalos y sorteo</p>
+          </div>
+        </div>
+
+        <!-- Pestañas principales -->
+        <nav class="flex p-1 bg-darkCard border border-darkBorder rounded-xl shadow-inner">
+          <button id="tab-characters-btn" onclick="switchTab('characters')" 
+            class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            Personajes y Regalos
+          </button>
+          
+          <button id="tab-draw-btn" onclick="switchTab('draw')" 
+            class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 text-slate-400 hover:text-slate-200 hover:bg-white/5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+            Resultado del Sorteo
+          </button>
+        </nav>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- PESTAÑA 1: PERSONAJES Y REGALOS -->
+    <section id="tab-characters" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-darkCard p-4 rounded-2xl border border-darkBorder shadow-lg">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>👥</span> Participantes y Opciones
+          </h2>
+          <p class="text-xs text-slate-400">Orden aleatorio al cargar la página para mayor dinamismo</p>
+        </div>
+        <button onclick="shuffleCharactersUI()" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl font-semibold text-xs transition-all duration-200 hover:scale-105 active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          Mezclar Personajes
+        </button>
+      </div>
+
+      <!-- Tarjetas de Personajes -->
+      <div id="characters-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+    </section>
+
+    <!-- PESTAÑA 2: RESULTADO DEL SORTEO -->
+    <section id="tab-draw" class="hidden space-y-6">
+      
+      <!-- Panel de Control / Animación de Tómbola -->
+      <div class="bg-darkCard border border-darkBorder rounded-2xl p-6 shadow-xl text-center relative overflow-hidden">
+        <div class="max-w-2xl mx-auto space-y-4 relative z-10">
+          <span class="inline-block px-3 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold rounded-full uppercase tracking-wider">
+            Sorteo Oficial
+          </span>
+          <h2 class="text-2xl font-black text-white tracking-tight">
+            Parejas Asignadas de Amigo Secreto
+          </h2>
+          <p class="text-slate-400 text-sm">
+            ¡Gira el bombo de balotas para ver la llegada animada con giros múltiples 3D!
+          </p>
+
+          <div class="pt-2 flex flex-wrap justify-center gap-3">
+            <button onclick="triggerLotteryAnimation()" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-extrabold text-sm shadow-xl shadow-purple-600/30 transition-all duration-300 transform hover:scale-105 active:scale-95">
+              <span id="tombola-icon" class="text-lg">🎰</span>
+              Girar Balotas y Revelar
+            </button>
+
+            <button onclick="toggleAllPairs(true)" class="px-4 py-3 bg-darkBorder hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-all">
+              👁️ Mostrar Todos
+            </button>
+            <button onclick="toggleAllPairs(false)" class="px-4 py-3 bg-darkBorder hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-all">
+              🙈 Ocultar Todos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid de Parejas -->
+      <div id="lottery-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6"></div>
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT -->
+  <script>
+    // Datos Base de Personajes
+    const rawData = [
+      {
+        id: "maya",
+        name: "Maya",
+        avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnAKpKwoBQAvfhf13Gm2igfVsgbBKNDhQa7LcgfW9rgQ&s=10",
+        opt1: "Reloj blanco deportivo de tamaño mediano, si se puede con correa de expansión",
+        opt2: "Audífonos inalámbricos Bluetooth Android (de diadema NO)",
+        opt3: "Una power bank",
+        treat: "Uvas, milkiwey, arequipe pequeño"
+      },
+      {
+        id: "deadpool",
+        name: "Deadpool",
+        avatar: "https://i.pinimg.com/originals/d6/32/98/d6329843750e377499746ef129b1e0bf.jpg",
+        opt1: "Prenda reflectiva para manejo de moto talla XXL",
+        opt2: "Camisa manga larga un solo color talla XL",
+        opt3: "Bono para elementos de tecnología",
+        treat: "Lo que consideren"
+      },
+      {
+        id: "t800",
+        name: "T-800",
+        avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRh2vl-lNoP1k3A70hs4EWPF0j1MdMJgyYLdzl9EuKDydWcJFVImlokCHBv&s=10",
+        opt1: "Lapiz Tactil inalámbrico para Apple iPad (A16 - Modelo A3354)",
+        opt2: "Tarjetero, billetera compacta con Rfid y Color Negro. Dimensiones máximo de 11/8/1.5 largo/ancho/grosor",
+        opt3: "Cualquier prenda con logo de: https://upload.wikimedia.org/wikipedia/commons/4/4d/Skynet_Terminator_logo.png?utm_source=es.wikipedia.org&utm_campaign=index&utm_content=original",
+        treat: "Ración de Frutos Secos para ejercicios de campo para la Resistencia. Aleación pura de Chocolate al 85% de densidad. Barras Proteicas tácticas para reparación de tejido sintético."
+      },
+      {
+        id: "mafalda1",
+        name: "Mafalda 1",
+        avatar: "https://i0.wp.com/www.espoarte.net/wordpress/wp-content/uploads/2012/07/mafalda.jpg",
+        opt1: "Kit de pesas ejercicio mancuernas juego de pesas termoforrad mercado libre buen precio es mi principal opción",
+        opt2: "JVCParlante portátil JVC 5W Speaker LED Light IPX7 Water Resistant Grey Bluetooth En Falabella buen precio",
+        opt3: "Kit bombillos inteligentes - Por descarte, mejor mirar las opciones anteriores si quiere regalar las dos gracias por su gran corazón",
+        treat: "Cerveza, chocolates"
+      },
+      {
+        id: "mafalda2",
+        name: "Mafalda 2",
+        avatar: "https://i.pinimg.com/736x/aa/4b/b2/aa4bb272ea5fb3cda6bba4ffe7a68b49.jpg",
+        opt1: "Bolso bandolera Negra. Imagen de referencia https://pin.it/4ku4asCBU",
+        opt2: "Buzo talla M imagen de referencia https://pin.it/yNswCDEf2",
+        opt3: "Pantalón deportivo talla M imagen de referencia https://pin.it/S2W7Xk0oQ",
+        treat: "Frutas"
+      },
+      {
+        id: "vanellope",
+        name: "Vanellope von Schweetz",
+        avatar: "https://static.wikia.nocookie.net/disney/images/2/25/Profile_-_Vanellope_Von_schweetz.jpeg",
+        opt1: "Cinturon negro o miel velez talla s (estan en promo )",
+        opt2: "Mascarilla ancestral o termo protector b8 o booster de LA POCION",
+        opt3: "Riñonera Mujer Pequeña color Negro",
+        treat: "Chocolates , dulces , gomas lo que quieras"
+      },
+      {
+        id: "anakin",
+        name: "Anakin Skywalker",
+        avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQT7G1xYlvVIxIKaAzsf3YrfvnEezupubuYLzxUCWs9gtp93bz40BXe4fk&s=10",
+        opt1: "Bonos de librería nacional o panamericana",
+        opt2: "Bono Pepe ganga",
+        opt3: "Tarjeta de regalo de Amazon",
+        treat: "Todo es cariño"
+      },
+      {
+        id: "sally",
+        name: "Sally novia de jack",
+        avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTzXVL58wDphnIm9xI-3OxjN0uUNq9bfFm3AQNrii3kI_h3JhLgdjQss-s&s=10",
+        opt1: "Bono decathlon",
+        opt2: "Bono decathlon",
+        opt3: "Bono decathlon",
+        treat: "Café"
+      },
+      {
+        id: "tiburonsin",
+        name: "Tiburonsin",
+        avatar: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjGpb98Zkqf9z8eihIPX98DRcYzfpt8AHAy8piZ_RDMCF6RK0JwZ0DShFAsgTzF1hVBs8AiI1l295dJWL3tdDnEAhht6FGN5dfGpYwJOqnnqwIuinFEahEVTDGXd6BvdU26NHtnVzFidyt3/s1600/nemok.jpg",
+        opt1: "Tenis para Caminar Regaf Azul Osc Croydon para Mujer https://croydon.com.co/products/tenis-para-caminar-regaf-azul-osc-croydon-para-mujer?utm_source=revie&utm_medium=revie_star&utm_campaign=revie&gotorevieList=true&variant=51880254931264#cont-rl-w Talla 37",
+        opt2: "Termo Botella Agua Termica Buffer Acero Inoxidable +4 Tapas Soaked Lila https://www.mercadolibre.com.co/termo-botella-agua-termica-buffer-acero-inoxidable-4-tapas-soaked-lila/p/MCO50611855?product_trigger_id=MCO39206051&pdp_filters=item_id%3AMCO2633372706&applied_product_filters=MCO39314071&picker=true&matt_tool=15401541&quantity=1",
+        opt3: "Mancuerna, Pesa Rusa Recubierta Vinilo 8 Lbs Profit https://www.mercadolibre.com.co/mancuerna-pesa-rusa-recubierta-vinilo-8-lbs-profit/up/MCOU2616770553?matt_tool=15401541&pdp_filters=item_id%3AMCO598942131&ua=KsQlTXk3yhI9Oy9zlBaN-0a8ksFMyGBaKdn0WmPRYJCAF10#origin=share&sid=share&wid=MCO598942131&action=whatsapp",
+        treat: "Frutos secos, o fruta"
+      },
+      {
+        id: "jeffrey",
+        name: "Jeffrey Albertson",
+        avatar: "https://i0.wp.com/factrepublic.com/wp-content/uploads/2020/10/35.Comic-Book-Guy-from-The-Simpsons.jpg",
+        opt1: "Pila Energizer Recharge Universal AAA X 4, 8, 12 o 16 Unidades (Lo que quiera) https://www.mercadolibre.com.co/p/MCO22015422",
+        opt2: "Omega 3 - Suplemento Dietario - Healthy America https://www.mercadolibre.com.co/p/MCO62804268",
+        opt3: "Rolda After Shave Clasico Tonico Post Afeitado 410ml https://www.mercadolibre.com.co/p/MCO43187880",
+        treat: "Frutos secos, Mani salado, Barras energéticas"
+      },
+      {
+        id: "xena",
+        name: "Xena",
+        avatar: "https://i.blogs.es/1c2963/xena-princesa-guerrera/375_375.jpeg",
+        opt1: "Parlante pequeño portátil https://www.mercadolibre.com.co/p/MCO46957602",
+        opt2: "Perfile Pergolese, este lo pueden conseguir en San Andresito de la 38, esta es la presentación https://www.mercadolibre.com.co/p/MCO51285563",
+        opt3: "Perfume Fantasía Azul de la revista Esika https://www.mercadolibre.com.co/p/MCO52734709",
+        treat: "Frutos secos, Mani salado, Barras energéticas"
+      }
+    ];
+
+    // Resultado Oficial del Sorteo
+    const officialPairs = [
+	  { giver: "Maya", receiver: "Tiburonsin" },
+	  { giver: "Deadpool", receiver: "Mafalda 1" },
+	  { giver: "T-800", receiver: "Vanellope von Schweetz" },
+	  { giver: "Mafalda 1", receiver: "Anakin Skywalker" },
+	  { giver: "Mafalda 2", receiver: "Sally novia de jack" },
+	  { giver: "Vanellope von Schweetz", receiver: "Jeffrey Albertson" },
+	  { giver: "Anakin Skywalker", receiver: "Xena" },
+	  { giver: "Sally novia de jack", receiver: "Deadpool" },
+	  { giver: "Tiburonsin", receiver: "Maya" },
+	  { giver: "Jeffrey Albertson", receiver: "Mafalda 2" },
+	  { giver: "Xena", receiver: "T-800" }
+	];
+
+    let currentCharacters = [];
+    let pairVisibility = {};
+
+    function parseLinks(text) {
+      if (!text) return '';
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-semibold underline underline-offset-2 transition-colors break-all">
+          <span>Ver enlace</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        </a>`;
+      });
+    }
+
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Inicialización al Cargar
+    document.addEventListener("DOMContentLoaded", () => {
+      currentCharacters = shuffleArray(rawData);
+      renderCharacters();
+      officialPairs.forEach((_, idx) => pairVisibility[idx] = true);
+      renderLotteryPairs();
+    });
+
+    function renderCharacters() {
+      const container = document.getElementById("characters-container");
+      container.innerHTML = "";
+
+      currentCharacters.forEach((char) => {
+        const card = document.createElement("div");
+        card.className = "bg-darkCard border border-darkBorder rounded-2xl p-6 shadow-xl hover:border-purple-500/40 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-900/10 flex flex-col justify-between";
+
+        card.innerHTML = `
+          <div>
+            <!-- Header personaje: Imagen + Nombre -->
+            <div class="flex items-center gap-5 pb-5 mb-5 border-b border-darkBorder">
+              <div class="relative group flex-shrink-0">
+                <div class="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-cyan-500 rounded-2xl blur opacity-40 group-hover:opacity-100 transition duration-300"></div>
+                <img src="${char.avatar}" alt="${char.name}" class="relative w-24 h-24 rounded-2xl bg-darkBg border-2 border-darkBorder object-cover shadow-inner">
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-2xl font-black text-white tracking-tight truncate">${char.name}</h3>
+                <span class="inline-block mt-1 px-3 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold rounded-lg">
+                  Participante
+                </span>
+              </div>
+            </div>
+
+            <!-- Opciones de Regalos -->
+            <div class="space-y-4">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <span>🎁</span> Opciones de Regalos
+              </h4>
+              
+              <div class="space-y-2.5">
+                <div class="p-3 bg-darkBg/60 rounded-xl border border-darkBorder/60 text-sm">
+                  <span class="font-extrabold text-purple-400 mr-1.5">Opción 1:</span>
+                  <span class="text-slate-200">${parseLinks(char.opt1)}</span>
+                </div>
+                <div class="p-3 bg-darkBg/60 rounded-xl border border-darkBorder/60 text-sm">
+                  <span class="font-extrabold text-indigo-400 mr-1.5">Opción 2:</span>
+                  <span class="text-slate-200">${parseLinks(char.opt2)}</span>
+                </div>
+                <div class="p-3 bg-darkBg/60 rounded-xl border border-darkBorder/60 text-sm">
+                  <span class="font-extrabold text-cyan-400 mr-1.5">Opción 3:</span>
+                  <span class="text-slate-200">${parseLinks(char.opt3)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Endulzada -->
+          <div class="mt-5 pt-4 border-t border-darkBorder/80">
+            <div class="p-3 bg-gradient-to-r from-rose-950/20 to-purple-950/20 border border-rose-500/20 rounded-xl text-sm">
+              <span class="font-bold text-rose-400 block mb-0.5 flex items-center gap-1">
+                <span>🍬</span> Endulzada deseada:
+              </span>
+              <span class="text-slate-300 italic">${parseLinks(char.treat)}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function shuffleCharactersUI() {
+      currentCharacters = shuffleArray(currentCharacters);
+      renderCharacters();
+    }
+
+    function renderLotteryPairs() {
+      const container = document.getElementById("lottery-grid");
+      container.innerHTML = "";
+
+      officialPairs.forEach((pair, idx) => {
+        const isVisible = pairVisibility[idx];
+        const giverChar = rawData.find(c => c.name === pair.giver) || { avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=' + pair.giver };
+        const receiverChar = rawData.find(c => c.name === pair.receiver) || { avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=' + pair.receiver };
+
+        // Cálculo de trayectorias aleatorias para giros 3D
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 800 + Math.random() * 500; // Sale proyectado desde más lejos
+        const tx = Math.cos(angle) * distance + 'px';
+        const ty = Math.sin(angle) * distance + 'px';
+        const delay = (idx * 0.08).toFixed(2) + 's';
+
+        const card = document.createElement("div");
+        card.className = "lottery-ball-card bg-darkCard border border-darkBorder rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between";
+        card.style.setProperty('--tx', tx);
+        card.style.setProperty('--ty', ty);
+        card.style.animationDelay = delay;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2 mb-4 pb-4 border-b border-darkBorder">
+            <span class="text-xs font-black uppercase tracking-widest text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+              Pareja #${idx + 1}
+            </span>
+            <button onclick="toggleSinglePair(${idx})" class="p-2 hover:bg-darkBorder rounded-xl text-slate-400 hover:text-white transition-colors">
+              ${isVisible ? '👁️' : '🙈'}
+            </button>
+          </div>
+
+          <div class="grid grid-cols-11 items-center gap-2 my-2">
+            <!-- Quien regala -->
+            <div class="col-span-5 text-center flex flex-col items-center">
+              <img src="${giverChar.avatar}" class="w-16 h-16 rounded-2xl bg-darkBg border-2 border-purple-500/50 p-1 mb-2 shadow-lg">
+              <span class="text-xs text-slate-400 font-bold uppercase">Le regala</span>
+              <span class="text-base font-extrabold text-white truncate max-w-full">${pair.giver}</span>
+            </div>
+
+            <!-- Flecha conector -->
+            <div class="col-span-1 text-center font-black text-purple-400 text-xl animate-pulse">
+              ➔
+            </div>
+
+            <!-- Receptor -->
+            <div class="col-span-5 text-center flex flex-col items-center">
+              <div class="relative w-16 h-16 mb-2">
+                <img src="${receiverChar.avatar}" class="w-16 h-16 rounded-2xl bg-darkBg border-2 border-cyan-500/50 p-1 shadow-lg transition-all duration-300 ${!isVisible ? 'filter blur-md grayscale' : ''}">
+                ${!isVisible ? `<div class="absolute inset-0 flex items-center justify-center bg-darkBg/80 rounded-2xl text-xl">❓</div>` : ''}
+              </div>
+              <span class="text-xs text-slate-400 font-bold uppercase">Recibe regalo</span>
+              <span class="text-base font-extrabold text-cyan-300 truncate max-w-full">
+                ${isVisible ? pair.receiver : '••••••••••'}
+              </span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function triggerLotteryAnimation() {
+      const tombola = document.getElementById("tombola-icon");
+      tombola.classList.add("animate-tumble");
+      
+      // Volver a renderizar disparando nuevamente las animaciones de giros 3D
+      renderLotteryPairs();
+
+      setTimeout(() => {
+        tombola.classList.remove("animate-tumble");
+      }, 1500);
+    }
+
+    function toggleSinglePair(idx) {
+      pairVisibility[idx] = !pairVisibility[idx];
+      renderLotteryPairs();
+    }
+
+    function toggleAllPairs(show) {
+      officialPairs.forEach((_, idx) => pairVisibility[idx] = show);
+      renderLotteryPairs();
+    }
+
+    function switchTab(tab) {
+      const charTab = document.getElementById("tab-characters");
+      const drawTab = document.getElementById("tab-draw");
+      const charBtn = document.getElementById("tab-characters-btn");
+      const drawBtn = document.getElementById("tab-draw-btn");
+
+      const activeClasses = ["bg-gradient-to-r", "from-purple-600", "to-indigo-600", "text-white", "shadow-lg", "shadow-purple-600/30"];
+      const inactiveClasses = ["text-slate-400", "hover:text-slate-200", "hover:bg-white/5"];
+
+      if (tab === "characters") {
+        charTab.classList.remove("hidden");
+        drawTab.classList.add("hidden");
+
+        charBtn.classList.add(...activeClasses);
+        charBtn.classList.remove(...inactiveClasses);
+
+        drawBtn.classList.remove(...activeClasses);
+        drawBtn.classList.add(...inactiveClasses);
+      } else {
+        charTab.classList.add("hidden");
+        drawTab.classList.remove("hidden");
+
+        drawBtn.classList.add(...activeClasses);
+        drawBtn.classList.remove(...inactiveClasses);
+
+        charBtn.classList.remove(...activeClasses);
+        charBtn.classList.add(...inactiveClasses);
+
+        triggerLotteryAnimation();
+      }
+    }
+  </script>
+</body>
+</html>
